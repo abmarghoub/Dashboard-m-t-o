@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard météo</title>
+
+  <style>
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding-left: 15px;
+      text-align: left;
+      height: 35px;
+      width: 16%;
+      font-family: Verdana;
+    }
+    th { color: rgb(184, 165, 165); }
+    table {
+      float: left;
+      border-collapse: collapse;
+      width: 35%;
+      border: 1px solid rgb(241, 199, 199);
+    }
+    #btns { margin-bottom: 15px; }
+    button {
+      padding: 8px 15px;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-family: Verdana;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Boutons ajoutés -->
+  <div id="btns">
+    <button id="pauseBtn">Pause</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div>
+    <table id="myTable">
+      <thead>
+        <tr>
+          <th>Mois</th>
+          <th>Max./Min. (°C)</th>
+          <th>Pluie</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div style="width: 65%; float: right;">
+    <div style="height: 250px;">
+      <canvas id="myChart" width="600" height="150"></canvas>
+    </div>
+    <div style="height: 250px;">
+      <canvas id="myChart1" width="600" height="150"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+  <script>
+    // 1) tableaux qui vont stocker l'historique
+    var mois_tab = [];
+    var max_tab = [];
+    var min_tab = [];
+    var pluie_tab = [];
+    var paused = false;
+
+   // 2) créer le graphique Températures
+    var ctxTemp = document.getElementById("myChart").getContext("2d");
+    var chartTemp = new Chart(ctxTemp, {
+      type: "line",
+      data: {
+        labels: mois_tab,
+        datasets: [
+          { label: "Max.", data: max_tab, fill: false, lineTension: 0.5, borderColor: "#abcbff" },
+          { label: "Min.", data: min_tab, fill: false, lineTension: 0.5, borderColor: "blue" }
+        ]
+      },
+      options: { scales: { yAxes: [{ ticks: { beginAtZero: true } }] } }
+    });
+
+    // 3) créer le graphique Pluie
+    var ctxPluie = document.getElementById("myChart1").getContext("2d");
+    var chartPluie = new Chart(ctxPluie, {
+      type: "bar",
+      data: {
+        labels: mois_tab,
+        datasets: [{ label: "Nbr Jours", data: pluie_tab, borderWidth: 1 }]
+      },
+      options: { scales: { yAxes: [{ ticks: { beginAtZero: true } }] } }
+    });
+
+   // 4) se connecter au WebSocket (serveur Node.js)
+    var ws = new WebSocket("ws://localhost:5002");
+
+    ws.onmessage = function (evt) {
+        // 5) parser le JSON reçu
+      if (paused) return;
+      var tab = JSON.parse(evt.data);
+      // 6) alimenter les tableaux (conversion vers nombre)
+      mois_tab.push(tab.mois);
+      max_tab.push(Number(tab.tmax));
+      min_tab.push(Number(tab.tmin));
+      pluie_tab.push(Number(tab.pluie));
+       // 7) insérer une ligne dans le tableau HTML
+      var row = "<tr>"
+        + "<td>" + tab.mois + "</td>"
+        + "<td>" + tab.tmax + "° / " + tab.tmin + "°</td>"
+        + "<td>" + tab.pluie + " jours</td>"
+        + "</tr>";
+
+      $("#myTable > tbody").append(row);
+      // 8) rafraîchir les graphiques
+      chartTemp.update();
+      chartPluie.update();
+    };
+
+    document.getElementById("pauseBtn").onclick = function () {
+      paused = !paused;
+      this.textContent = paused ? "Reprendre" : "Pause";
+    };
+    document.getElementById("resetBtn").onclick = function () {
+      mois_tab.length = 0;
+      max_tab.length = 0;
+      min_tab.length = 0;
+      pluie_tab.length = 0;
+      $("#myTable > tbody").empty();
+      chartTemp.update();
+      chartPluie.update();
+    };
+  </script>
+</body>
+</html>
