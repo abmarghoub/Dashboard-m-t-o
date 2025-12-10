@@ -61,3 +61,4 @@ L’application se compose de trois couches principales :
 
 Lorsque le serveur WebSocket est lancé et que la page `index.html` est ouverte dans un navigateur :
 
+https://github.com/user-attachments/assets/4f709871-59b9-4e6b-82b6-3a691329ea93
